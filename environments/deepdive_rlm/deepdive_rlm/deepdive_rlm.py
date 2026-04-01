@@ -6,7 +6,6 @@ import logging
 import os
 import re
 from time import perf_counter
-from typing import Literal
 
 import aiohttp
 import httpx
@@ -53,61 +52,10 @@ class SerperAPIError(vf.InfraError):
     pass
 
 
-# Environment-specific tips for RLM mode (used for SFT data generation)
-# These tips are wrapped in <env_tips> tags so they can be removed during training
-
-
-def _build_env_tips(tool_placement: str) -> str:
-    if tool_placement == "sub":
-        step2 = (
-            "2. **Parallel sub-LLM research**: Use `llm_batch()` to dispatch these sub-tasks in parallel. "
-            "Each sub-LLM has access to web search tools (search_web, scan_page, open_lines) and can:\n"
-            "   - Search for relevant information\n"
-            "   - Open promising results to read full content\n"
-            "   - Extract and summarize key facts"
-        )
-        insight = "Key insight: Sub-LLMs handle the verbose web content, returning concise summaries. This keeps your context clean while leveraging deep research."
-    elif tool_placement == "root":
-        step2 = (
-            "2. **Direct web research**: You have direct access to web search tools "
-            "(search_web, scan_page, open_lines). Use them to:\n"
-            "   - Search for relevant information\n"
-            "   - Open promising results to read full content\n"
-            "   - Extract and summarize key facts\n"
-            "   You can still use `llm_batch()` to delegate reasoning/synthesis tasks to sub-LLMs, "
-            "but sub-LLMs do NOT have search tools."
-        )
-        insight = "Key insight: You control the search tools directly. Use sub-LLMs via llm_batch() for parallel reasoning and synthesis, not for searching."
-    else:  # "both"
-        step2 = (
-            "2. **Flexible web research**: Both you and sub-LLMs have access to web search tools "
-            "(search_web, scan_page, open_lines). You can:\n"
-            "   - Search directly for quick lookups\n"
-            "   - Delegate searches to sub-LLMs via `llm_batch()` for parallel research\n"
-            "   - Mix both approaches as needed"
-        )
-        insight = "Key insight: Prefer delegating bulk searches to sub-LLMs via llm_batch() for parallelism, but use direct search when you need a quick lookup."
-
-    return f"""
-
-<env_tips>
-Strategy for deep research tasks:
-
-1. **Decompose the question**: Break the main question into multiple smaller, focused research sub-tasks that can be investigated independently.
-
-{step2}
-
-3. **Synthesize findings**: After collecting sub-LLM responses, combine and cross-reference their findings. Look for:
-   - Consistent facts across sources (high confidence)
-   - Contradictions that need resolution
-   - Gaps that require follow-up research
-
-4. **Iterate if needed**: If the initial research reveals new questions or missing information, dispatch another batch of targeted sub-tasks. Repeat until you have sufficient evidence.
-
-5. **Finalize**: Write your synthesized answer to `answer["content"]`, verify it addresses the original question, then set `answer["ready"] = True`.
-
-{insight}
-</env_tips>"""
+# Legacy env tips — kept as empty placeholder for backward compatibility.
+# TODO: update env tips for the new tool placement flags.
+def _build_env_tips() -> str:
+    return ""
 
 
 def load_environment(
@@ -115,7 +63,9 @@ def load_environment(
     # RLM options
     include_env_tips: bool = False,
     prompt_in_context_file: bool = False,
-    tool_placement: Literal["root", "sub", "both"] = "sub",
+    tools_on_root: bool = False,
+    tools_in_repl: bool = False,
+    tools_on_sub: bool = True,
     max_turns: int = 50,
     sub_llm_max_turns: int = 5,
     sub_model: str | None = None,
@@ -163,8 +113,8 @@ def load_environment(
 ) -> vf.Environment:
     if log_level is not None:
         logger.setLevel(log_level)
-    if tool_placement not in ("root", "sub", "both"):
-        raise ValueError(f"tool_placement must be 'root', 'sub', or 'both', got {tool_placement!r}")
+    if not any([tools_on_root, tools_in_repl, tools_on_sub]):
+        logger.warning("No tool placement flags are set. Search tools will not be available to any model.")
     # Configure thread pool for URL fetching/parsing
     configure_thread_pool(max_workers=open_max_workers)
     configure_fetch_semaphore(max_concurrency=open_max_concurrency)
@@ -183,12 +133,18 @@ def load_environment(
     )
 
     # === Dataset ===
+    if include_env_tips:
+        logger.warning(
+            "include_env_tips=True but env tips are not yet updated "
+            "for the new tool placement flags. Tips will be empty."
+        )
+
     # Add `prompt` and keep the raw question for judging
     def to_record(d):
         q = (d["question"] or "").rstrip()
         prompt_content = q
         if include_env_tips:
-            prompt_content = prompt_content + _build_env_tips(tool_placement)
+            prompt_content = prompt_content + _build_env_tips()
         info = {"raw_question": q}
         if prompt_in_context_file:
             info["context"] = prompt_content
@@ -520,8 +476,9 @@ def load_environment(
         DeepDive environment using RLM (Recursive Language Model) pattern.
 
         The root model writes Python code to orchestrate search and reasoning.
-        Search tools (search_web, scan_page, open_lines) are placed on root, sub-LLMs,
-        or both, depending on the ``tool_placement`` argument.
+        Search tools (search_web, scan_page, open_lines) are placed on the root
+        LLM, inside the REPL, on sub-LLMs, or any combination, depending on the
+        ``tools_on_root``, ``tools_in_repl``, and ``tools_on_sub`` flags.
 
         Final answer is set via:
             answer["content"] = "your answer"
@@ -576,16 +533,20 @@ def load_environment(
     sandbox_labels = list(set(sandbox_labels))
 
     search_tools = [search_web, scan_page, open_lines]
-    root_tools: list = []
+    standard_tools: list = []
+    repl_tools: list = []
     sub_tools: list = []
-    if tool_placement in ("root", "both"):
-        root_tools.extend(search_tools)
-    if tool_placement in ("sub", "both"):
+    if tools_on_root:
+        standard_tools.extend(search_tools)
+    if tools_in_repl:
+        repl_tools.extend(search_tools)
+    if tools_on_sub:
         sub_tools.extend(search_tools)
 
     env = DeepDiveRLMEnv(
         sub_model=sub_model,
-        root_tools=root_tools,
+        tools=standard_tools,
+        root_tools=repl_tools,
         sub_tools=sub_tools,
         sub_llm_max_turns=sub_llm_max_turns,
         max_turns=max_turns,
