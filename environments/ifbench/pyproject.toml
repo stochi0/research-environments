@@ -12,8 +12,8 @@ dependencies = [
     "spacy",
     "emoji",
     "syllapy",
+    "setuptools<78",
     "pip",
-    "setuptools<67.5.0",
 ]
 
 [build-system]
