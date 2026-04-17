@@ -1,11 +1,8 @@
 name: Publish Envs
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*.*.*'
-      - '!v*.*.*.dev*'  # Exclude dev releases
+    branches: [main]
 
 jobs:
   detect-envs:
