@@ -14,7 +14,7 @@ RLM agent solving DeepDive research-QA tasks inside Prime Sandboxes via `Composa
 # From research-environments root
 uv pip install -e ./environments/rlm_deepdive
 
-# Single debug rollout (requires GH_TOKEN for private rlm repo + SERPER_API_KEY for websearch)
+# Single debug rollout (requires GH_TOKEN when the host must fill the local RLM cache + SERPER_API_KEY for websearch)
 GH_TOKEN=... SERPER_API_KEY=... uv run vf-eval rlm-deepdive -d -v -n1 -r1
 ```
 
@@ -41,10 +41,11 @@ These live under `rlm_deepdive/skills/` and are auto-uploaded to `/task/rlm-skil
 | `rlm_max_turns_in_context` | -1 | Max assistant turns retained in live context (`-1` disables) |
 | `rlm_tools` | `"bash,websearch,openpage"` | Active RLM tools |
 | `rlm_exec_timeout` | `300` | Per-tool execution timeout forwarded as `RLM_EXEC_TIMEOUT` to the sandbox |
-| `rlm_repo_url` | harness default | Override the GitHub repo to install RLM from |
-| `rlm_branch` | harness default | Override the Git branch for the RLM checkout |
+| `rlm_repo_url` | harness default | Override the repo URL or local git source used to materialize the RLM checkout |
+| `rlm_branch` | harness default | Override the git branch for the RLM checkout |
+| `rlm_local_checkout` | host cache default | Optional host-side checkout path for RLM. If the checkout is missing, it is cloned there once and then uploaded into each sandbox |
 | `append_to_system_prompt` | None | Extra instructions appended to the default system prompt |
-| `gh_token` | `$GH_TOKEN` | GitHub token for the private rlm repo (install-only) |
+| `gh_token` | `$GH_TOKEN` | GitHub token for the private rlm repo, used only on the host to fill the local cache when needed |
 | `sandbox_image` | `"python:3.11-slim"` | Docker image for the sandbox |
 | `sandbox_cpu_cores` | 2 | CPU cores per sandbox |
 | `sandbox_memory_gb` | 2 | Memory per sandbox |
@@ -58,6 +59,10 @@ These live under `rlm_deepdive/skills/` and are auto-uploaded to `/task/rlm-skil
 The system prompt instructs the agent to write its final answer (wrapped in `\boxed{...}`) to `/task/answer.txt`. After the rollout, the rubric reads that file from the sandbox, extracts the boxed answer, and asks the judge model whether it matches the gold answer. Reward is 1.0 on "yes", else 0.0.
 
 ### Changelog
+
+#### v0.1.4
+- Add `rlm_local_checkout` as the host-side RLM checkout path override.
+- Cache the RLM checkout on the host and upload it into each sandbox, reducing direct clone pressure on the private repo during large runs.
 
 #### v0.1.3
 - Add `rlm_exec_timeout` parameter (default 300s); forwarded as `RLM_EXEC_TIMEOUT` to the sandbox, capping per-tool execution time inside the RLM agent.

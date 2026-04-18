@@ -14,7 +14,7 @@ RLM agent solving SWE tasks inside Prime Sandboxes via ComposableEnv.
 # From research-environments root
 uv pip install -e ./environments/rlm_swe
 
-# Single debug rollout (requires GH_TOKEN for private rlm repo)
+# Single debug rollout (requires GH_TOKEN when the host must fill the local RLM cache)
 GH_TOKEN=... uv run vf-eval rlm-swe -a '{"task_type":"r2e"}' -d -v -n1 -r1
 ```
 
@@ -29,10 +29,11 @@ GH_TOKEN=... uv run vf-eval rlm-swe -a '{"task_type":"r2e"}' -d -v -n1 -r1
 | `rlm_max_turns_in_context` | -1 | Max assistant turns retained in live context (`-1` disables the limit) |
 | `rlm_tools` | `"bash,edit"` | Active RLM tools (comma-separated) |
 | `rlm_exec_timeout` | `300` | Per-tool execution timeout forwarded as `RLM_EXEC_TIMEOUT` to the sandbox |
-| `rlm_repo_url` | harness default | Override the GitHub repo to install RLM from |
-| `rlm_branch` | harness default | Override the Git branch for the RLM checkout |
+| `rlm_repo_url` | harness default | Override the repo URL or local git source used to materialize the RLM checkout |
+| `rlm_branch` | harness default | Override the git branch for the RLM checkout |
+| `rlm_local_checkout` | host cache default | Optional host-side checkout path for RLM. If the checkout is missing, it is cloned there once and then uploaded into each sandbox |
 | `append_to_system_prompt` | None | Extra instructions appended to the default generated RLM system prompt |
-| `gh_token` | `$GH_TOKEN` | GitHub token for private rlm repo, passed only to the install command |
+| `gh_token` | `$GH_TOKEN` | GitHub token for private rlm repo, used only on the host to fill the local cache when needed |
 | `max_turns` | 200 | Max interception server turns |
 | `timeout_seconds` | 5400 | Sandbox timeout (90min) |
 | `poll_interval` | 1.0 | Seconds between `CliAgentEnv` intercept-queue polls / liveness checks |
@@ -40,6 +41,10 @@ GH_TOKEN=... uv run vf-eval rlm-swe -a '{"task_type":"r2e"}' -d -v -n1 -r1
 | `sandbox_memory_gb` | 4 | Memory per sandbox |
 
 ### Changelog
+
+#### v0.2.6
+- Add `rlm_local_checkout` as the host-side RLM checkout path override.
+- Cache the RLM checkout on the host and upload it into each sandbox, reducing direct clone pressure on the private repo during large runs.
 
 #### v0.2.5
 - Bump verifiers to `>=0.1.13.dev1`.

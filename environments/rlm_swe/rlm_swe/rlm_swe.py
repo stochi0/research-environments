@@ -38,6 +38,7 @@ def load_environment(
     rlm_exec_timeout: int = 300,
     rlm_branch: str | None = None,
     rlm_repo_url: str | None = None,
+    rlm_local_checkout: str | None = None,
     append_to_system_prompt: str | None = None,
     gh_token: str | None = None,
     # Env / sandbox args
@@ -70,21 +71,22 @@ def load_environment(
     if _SKILLS_DIR.is_dir():
         taskset.get_skills_dir = lambda: _SKILLS_DIR
 
+    token = gh_token or os.environ.get("GH_TOKEN")
+
     harness_kwargs: dict[str, Any] = {
         "workdir": getattr(taskset, "default_workdir", "/testbed"),
+        "local_checkout": rlm_local_checkout,
         "append_to_system_prompt": append_to_system_prompt,
+        "gh_token": token,
     }
     if rlm_repo_url is not None:
         harness_kwargs["rlm_repo_url"] = rlm_repo_url
     if rlm_branch is not None:
         harness_kwargs["rlm_branch"] = rlm_branch
 
-    token = gh_token or os.environ.get("GH_TOKEN")
-
     env = ComposableEnv(
         taskset=taskset,
         harness=rlm_harness(**harness_kwargs),
-        install_env={"GH_TOKEN": token} if token else None,
         keep_sandbox_for_scoring=True,
         max_turns=max_turns,
         timeout_seconds=timeout_seconds,

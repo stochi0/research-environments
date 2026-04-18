@@ -33,8 +33,9 @@ GH_TOKEN=... EXA_API_KEY=... \
     uv run vf-eval rlm-browsecomp -a '{"skills": "exa"}' -n 1 -r 1 -d -v
 ```
 
-`GH_TOKEN` is used to clone the RLM repo inside the sandbox. `OPENAI_API_KEY`
-(or the var named in `judge_api_key_var`) is used by the external judge.
+`GH_TOKEN` is needed when the host must materialize the shared local `rlm`
+cache. `OPENAI_API_KEY` (or the var named in
+`judge_api_key_var`) is used by the external judge.
 
 ## Key parameters
 
@@ -43,6 +44,8 @@ GH_TOKEN=... EXA_API_KEY=... \
 | `skills` | `"serper"` | Which skill variant to upload (`serper` or `exa`). |
 | `judge_model` | `"gpt-4.1-mini"` | Grader model. |
 | `rlm_tools` | `"bash,websearch,openpage"` | Tools RLM activates. |
+| `rlm_local_checkout` | host cache default | Optional host-side checkout path for RLM. If the checkout is missing, it is cloned there once and then uploaded into each sandbox. |
+| `gh_token` | `$GH_TOKEN` | GitHub token for the private rlm repo, used only on the host to fill the local cache when needed. |
 | `rlm_max_turns` | 100 | Agent turn cap (RLM-side). |
 | `max_turns` | 200 | Env-side rollout turn cap. |
 | `timeout_seconds` | 1800 | Shared agent + sandbox lifetime. |
@@ -60,3 +63,10 @@ Metrics (non-rewarding):
 - `judge_confidence` — confidence `[0,1]` parsed out of the judge response.
 - `model_confidence` — confidence `[0,1]` parsed out of the agent's
   `/task/answer.txt`.
+
+## Changelog
+
+#### v0.1.1
+- Add `rlm_local_checkout` as the host-side RLM checkout path override.
+- Bump `verifiers` to `>=0.1.13.dev1`.
+- Cache the RLM checkout on the host and upload it into each sandbox, reducing direct clone pressure on the private repo during large runs.

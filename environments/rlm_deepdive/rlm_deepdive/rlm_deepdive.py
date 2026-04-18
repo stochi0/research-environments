@@ -218,6 +218,7 @@ def load_environment(
     rlm_exec_timeout: int = 300,
     rlm_branch: str | None = None,
     rlm_repo_url: str | None = None,
+    rlm_local_checkout: str | None = None,
     append_to_system_prompt: str | None = None,
     gh_token: str | None = None,
     # sandbox
@@ -267,21 +268,22 @@ def load_environment(
     if append_to_system_prompt:
         extra_system_prompt = f"{extra_system_prompt}\n\n{append_to_system_prompt}"
 
+    token = gh_token or os.environ.get("GH_TOKEN")
+
     harness_kwargs: dict[str, Any] = {
         "workdir": taskset.default_workdir,
+        "local_checkout": rlm_local_checkout,
         "append_to_system_prompt": extra_system_prompt,
+        "gh_token": token,
     }
     if rlm_repo_url is not None:
         harness_kwargs["rlm_repo_url"] = rlm_repo_url
     if rlm_branch is not None:
         harness_kwargs["rlm_branch"] = rlm_branch
 
-    token = gh_token or os.environ.get("GH_TOKEN")
-
     return ComposableEnv(
         taskset=taskset,
         harness=rlm_harness(**harness_kwargs),
-        install_env={"GH_TOKEN": token} if token else None,
         parser=parser,
         keep_sandbox_for_scoring=True,
         max_turns=max_turns,
