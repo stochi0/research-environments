@@ -28,6 +28,7 @@ GH_TOKEN=... uv run vf-eval rlm-swe -a '{"task_type":"r2e"}' -d -v -n1 -r1
 | `rlm_max_turns` | 100 | Max tool-calling turns for RLM |
 | `rlm_max_turns_in_context` | -1 | Max assistant turns retained in live context (`-1` disables the limit) |
 | `rlm_tools` | `"bash,edit"` | Active RLM tools (comma-separated) |
+| `rlm_exec_timeout` | `300` | Per-tool execution timeout forwarded as `RLM_EXEC_TIMEOUT` to the sandbox |
 | `rlm_repo_url` | harness default | Override the GitHub repo to install RLM from |
 | `rlm_branch` | harness default | Override the Git branch for the RLM checkout |
 | `append_to_system_prompt` | None | Extra instructions appended to the default generated RLM system prompt |
@@ -40,8 +41,13 @@ GH_TOKEN=... uv run vf-eval rlm-swe -a '{"task_type":"r2e"}' -d -v -n1 -r1
 
 ### Changelog
 
+#### v0.2.5
+- Bump verifiers to `>=0.1.13.dev1`.
+
 #### v0.2.4
-- Expose `poll_interval` kwarg; forwarded to `ComposableEnv` / `CliAgentEnv` to tune the intercept-queue poll cadence
+- Add `rlm_exec_timeout` parameter (default 300s); forwarded as `RLM_EXEC_TIMEOUT` to the sandbox, capping per-tool execution time inside the RLM agent.
+- Unify timeout knob: `timeout_seconds` now drives both the rollout deadline and the sandbox container lifetime (`sandbox_timeout_minutes` is derived via `math.ceil`), preventing sandbox teardown before the agent reaches its deadline.
+- Expose `poll_interval` kwarg; forwarded to `ComposableEnv` / `CliAgentEnv` to tune the intercept-queue poll cadence.
 
 #### v0.2.3
 - Ship the `edit` skill with this environment (under `rlm_swe/skills/edit/`), so the rlm harness no longer needs to bundle it; auto-uploaded to the sandbox via `ComposableEnv`'s skills-upload mechanism
