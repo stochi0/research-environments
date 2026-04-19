@@ -2,7 +2,7 @@
 
 The RLM agent runs inside a sandbox and answers BrowseComp questions using
 either an Exa-backed or Serper-backed pair of web tools (``websearch`` and
-``openpage``). The agent writes its final response — in the BrowseComp
+``open_webpage``). The agent writes its final response — in the BrowseComp
 ``Explanation / Exact Answer / Confidence`` format — to ``/task/answer.txt``;
 an LLM judge grades it against the gold answer using the HLE-style grader.
 
@@ -71,11 +71,6 @@ confidence: The extracted confidence score between 0% and 100% from [response]. 
 """.strip()
 
 APPEND_SYSTEM_PROMPT = f"""\
-You are answering a challenging browsing-based research question from the
-BrowseComp benchmark. Use the `websearch` and `openpage` skills to gather
-evidence across the open web, reason about what you find, then produce a
-single final answer.
-
 When you are ready, write your final response — and ONLY your final
 response — to {ANSWER_FILE} using exactly this format:
 
@@ -324,7 +319,6 @@ def load_environment(
     # rlm harness
     rlm_max_turns: int = DEFAULT_RLM_MAX_TURNS,
     rlm_max_turns_in_context: int = -1,
-    rlm_tools: str = "bash,websearch,openpage",
     rlm_exec_timeout: int = 300,
     rlm_branch: str | None = None,
     rlm_repo_url: str | None = None,
@@ -410,10 +404,8 @@ def load_environment(
         labels=labels or ["rlm-browsecomp"],
         environment_vars={
             "OPENAI_API_KEY": "intercepted",
-            "RLM_TOOLS": rlm_tools,
             "RLM_MAX_TURNS": str(rlm_max_turns),
             "RLM_MAX_TURNS_IN_CONTEXT": str(rlm_max_turns_in_context),
             "RLM_EXEC_TIMEOUT": str(rlm_exec_timeout),
-            "RLM_SYSTEM_PROMPT_VERBOSITY": "heavy",
         },
     )

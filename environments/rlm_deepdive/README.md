@@ -4,7 +4,7 @@ RLM agent solving DeepDive research-QA tasks inside Prime Sandboxes via `Composa
 
 ### Overview
 - **Environment ID**: `rlm_deepdive`
-- **Agent**: [RLM](https://github.com/PrimeIntellect-ai/rlm) with locally-shipped `websearch` and `openpage` skills
+- **Agent**: [RLM](https://github.com/PrimeIntellect-ai/rlm) with locally-shipped `websearch` and `open_webpage` skills
 - **Dataset**: [zai-org/DeepDive](https://huggingface.co/datasets/zai-org/DeepDive) (`qa_rl` split by default)
 - **Scoring**: LLM judge compares the agent's final answer (read from `/task/answer.txt`) against the gold answer
 
@@ -21,7 +21,7 @@ GH_TOKEN=... SERPER_API_KEY=... uv run vf-eval rlm-deepdive -d -v -n1 -r1
 ### Skills shipped with this environment
 
 - `websearch` — Serper-backed Google search. Requires `SERPER_API_KEY` in the host env; the taskset forwards it to the sandbox.
-- `openpage` — fetches a URL and returns the full parsed text. Handles HTML and PDF. No truncation.
+- `open_webpage` — fetches a URL and returns the full parsed text. Handles HTML and PDF. No truncation.
 
 These live under `rlm_deepdive/skills/` and are auto-uploaded to `/task/rlm-skills` in the sandbox by `ComposableEnv`; `rlm`'s install script picks them up at agent-install time.
 
@@ -39,7 +39,6 @@ These live under `rlm_deepdive/skills/` and are auto-uploaded to `/task/rlm-skil
 | `judge_base_url` | None | Override base URL for the judge client |
 | `rlm_max_turns` | 100 | Max tool-calling turns for RLM |
 | `rlm_max_turns_in_context` | -1 | Max assistant turns retained in live context (`-1` disables) |
-| `rlm_tools` | `"bash,websearch,openpage"` | Active RLM tools |
 | `rlm_exec_timeout` | `300` | Per-tool execution timeout forwarded as `RLM_EXEC_TIMEOUT` to the sandbox |
 | `rlm_repo_url` | harness default | Override the repo URL or local git source used to materialize the RLM checkout |
 | `rlm_branch` | harness default | Override the git branch for the RLM checkout |
@@ -53,12 +52,21 @@ These live under `rlm_deepdive/skills/` and are auto-uploaded to `/task/rlm-skil
 | `max_turns` | 200 | Interception server turns |
 | `timeout_seconds` | 1800 | Agent execution timeout; also drives sandbox container lifetime |
 | `poll_interval` | 1.0 | Seconds between `CliAgentEnv` intercept-queue polls / liveness checks |
+| `sandbox_client_max_workers` | 50 | Max worker threads in the shared sandbox client |
+| `labels` | `["rlm-deepdive"]` | Sandbox labels attached to created rollouts |
 
 ### How scoring works
 
 The system prompt instructs the agent to write its final answer (wrapped in `\boxed{...}`) to `/task/answer.txt`. After the rollout, the rubric reads that file from the sandbox, extracts the boxed answer, and asks the judge model whether it matches the gold answer. Reward is 1.0 on "yes", else 0.0.
 
 ### Changelog
+
+#### v0.1.5
+- Remove the unused `rlm_tools` argument and stop exporting the dead `RLM_TOOLS` / `RLM_SYSTEM_PROMPT_VERBOSITY` environment variables.
+- Require `verifiers>=0.1.13.dev3`.
+- Rename the `openpage` skill to `open_webpage`.
+- Trim the appended system prompt so it only carries task-specific output-format instructions, not extra role/tool-usage guidance.
+- Refresh the README argument table to match the current `load_environment()` signature.
 
 #### v0.1.4
 - Add `rlm_local_checkout` as the host-side RLM checkout path override.

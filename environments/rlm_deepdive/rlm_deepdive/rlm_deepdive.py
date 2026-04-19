@@ -1,7 +1,7 @@
 """RLM DeepDive environment — powered by ComposableEnv.
 
 The RLM agent runs inside a sandbox and answers deep-research questions
-using ``websearch`` and ``openpage`` skills shipped with this environment.
+using ``websearch`` and ``open_webpage`` skills shipped with this environment.
 The agent writes its final answer to ``/task/answer.txt``; an LLM judge
 compares it against the gold answer.
 
@@ -37,10 +37,6 @@ METADATA_KEYS = ["source", "category", "difficulty", "context", "metadata"]
 ANSWER_FILE = "/task/answer.txt"
 
 APPEND_SYSTEM_PROMPT = f"""\
-You are answering a research question. Use the `websearch` and `openpage`
-skills to gather evidence, reason about it, then produce a single final
-answer.
-
 When you are ready, write your final answer — and only your final answer —
 to {ANSWER_FILE}, then stop calling tools. Wrap the answer in \\boxed{{}}.
 For example:
@@ -214,7 +210,6 @@ def load_environment(
     # rlm harness
     rlm_max_turns: int = DEFAULT_RLM_MAX_TURNS,
     rlm_max_turns_in_context: int = -1,
-    rlm_tools: str = "bash,websearch,openpage",
     rlm_exec_timeout: int = 300,
     rlm_branch: str | None = None,
     rlm_repo_url: str | None = None,
@@ -296,10 +291,8 @@ def load_environment(
         labels=labels or ["rlm-deepdive"],
         environment_vars={
             "OPENAI_API_KEY": "intercepted",
-            "RLM_TOOLS": rlm_tools,
             "RLM_MAX_TURNS": str(rlm_max_turns),
             "RLM_MAX_TURNS_IN_CONTEXT": str(rlm_max_turns_in_context),
             "RLM_EXEC_TIMEOUT": str(rlm_exec_timeout),
-            "RLM_SYSTEM_PROMPT_VERBOSITY": "heavy",
         },
     )
